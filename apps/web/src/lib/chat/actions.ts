@@ -157,9 +157,14 @@ export async function sendMessage(input: {
     senderUserId: inserted.senderUserId,
   });
 
-  revalidatePath(`/chat/${conv.id}`);
   revalidatePath("/chat");
-  return { id: inserted.id };
+  return {
+    id: inserted.id,
+    createdAt:
+      inserted.createdAt instanceof Date
+        ? inserted.createdAt.toISOString()
+        : String(inserted.createdAt),
+  };
 }
 
 export async function toggleReaction(messageId: string, emoji: string) {

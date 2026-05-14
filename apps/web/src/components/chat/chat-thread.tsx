@@ -197,12 +197,22 @@ export function ChatThread({
 
     startTransition(async () => {
       try {
-        await sendMessage({
+        const { id: realId, createdAt: realCreatedAt } = await sendMessage({
           conversationId,
           body: body || undefined,
           replyToMessageId: replyTo?.id,
           activityId,
         });
+        setMessages((prev) => {
+          // If a concurrent refresh already added the real message, just drop the optimistic.
+          if (prev.some((m) => m.id === realId)) {
+            return prev.filter((m) => m.id !== optimisticId);
+          }
+          return prev.map((m) =>
+            m.id === optimisticId ? { ...m, id: realId, createdAt: realCreatedAt } : m,
+          );
+        });
+        lastTsRef.current = realCreatedAt;
       } catch (err) {
         setMessages((prev) => prev.filter((m) => m.id !== optimisticId));
         console.error(err);
