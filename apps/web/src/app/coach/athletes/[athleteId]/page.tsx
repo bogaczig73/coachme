@@ -83,14 +83,22 @@ export default async function CoachAthletePage({
             </p>
           </div>
         </div>
-        {conv && (
+        <div className="flex items-center gap-2">
           <Link
-            href={`/chat/${conv.id}`}
-            className="rounded-md bg-foreground px-3 py-2 text-sm text-background hover:opacity-90"
+            href={`/coach/athletes/${athleteId}/calendar`}
+            className="rounded-md border border-border px-3 py-2 text-sm hover:bg-muted"
           >
-            Open chat
+            Calendar
           </Link>
-        )}
+          {conv && (
+            <Link
+              href={`/chat/${conv.id}`}
+              className="rounded-md bg-foreground px-3 py-2 text-sm text-background hover:opacity-90"
+            >
+              Open chat
+            </Link>
+          )}
+        </div>
       </div>
 
       {rows.length === 0 ? (

@@ -265,6 +265,36 @@ export const conversationReads = pgTable(
   (t) => [primaryKey({ columns: [t.conversationId, t.userId] })],
 );
 
+export const plannedWorkouts = pgTable(
+  "planned_workout",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    athleteUserId: text("athlete_user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    createdByUserId: text("created_by_user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    scheduledDate: text("scheduled_date").notNull(), // YYYY-MM-DD, stored as text to avoid TZ issues
+    sport: text("sport").notNull(),
+    name: text("name").notNull(),
+    description: text("description"),
+    targetDurationSec: integer("target_duration_sec"),
+    targetDistanceM: integer("target_distance_m"),
+    targetTss: integer("target_tss"),
+    completedActivityId: uuid("completed_activity_id").references(
+      () => activities.id,
+      { onDelete: "set null" },
+    ),
+    createdAt: timestamp("created_at").defaultNow().notNull(),
+    updatedAt: timestamp("updated_at").defaultNow().notNull(),
+  },
+  (t) => [
+    index("planned_workout_athlete_date_idx").on(t.athleteUserId, t.scheduledDate),
+    index("planned_workout_creator_idx").on(t.createdByUserId),
+  ],
+);
+
 export type User = typeof users.$inferSelect;
 export type NewUser = typeof users.$inferInsert;
 export type Activity = typeof activities.$inferSelect;
@@ -278,3 +308,5 @@ export type NewMessage = typeof messages.$inferInsert;
 export type MessageReaction = typeof messageReactions.$inferSelect;
 export type CoachInvitation = typeof coachInvitations.$inferSelect;
 export type UserRole = (typeof userRole.enumValues)[number];
+export type PlannedWorkout = typeof plannedWorkouts.$inferSelect;
+export type NewPlannedWorkout = typeof plannedWorkouts.$inferInsert;
