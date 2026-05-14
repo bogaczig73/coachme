@@ -33,5 +33,10 @@ export async function selectRole(formData: FormData) {
     user: { ...session.user, role },
   });
 
+  const invite = formData.get("invite");
+  if (typeof invite === "string" && invite.length > 0) {
+    redirect(`/invite/${invite}`);
+  }
+
   redirect(`/${role}`);
 }

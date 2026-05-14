@@ -178,6 +178,93 @@ export const garminRequestTokens = pgTable("garmin_request_token", {
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
 
+export const coachInvitations = pgTable(
+  "coach_invitation",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    coachUserId: text("coach_user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    athleteEmail: text("athlete_email").notNull(),
+    token: text("token").notNull().unique(),
+    status: text("status").notNull().default("pending"),
+    createdAt: timestamp("created_at").defaultNow().notNull(),
+    acceptedAt: timestamp("accepted_at"),
+    expiresAt: timestamp("expires_at"),
+  },
+  (t) => [
+    index("coach_invitation_token_idx").on(t.token),
+    index("coach_invitation_email_idx").on(t.athleteEmail),
+  ],
+);
+
+export const conversations = pgTable(
+  "conversation",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    coachUserId: text("coach_user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    athleteUserId: text("athlete_user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    createdAt: timestamp("created_at").defaultNow().notNull(),
+    lastMessageAt: timestamp("last_message_at"),
+  },
+  (t) => [index("conversation_pair_idx").on(t.coachUserId, t.athleteUserId)],
+);
+
+export const messages = pgTable(
+  "message",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    conversationId: uuid("conversation_id")
+      .notNull()
+      .references(() => conversations.id, { onDelete: "cascade" }),
+    senderUserId: text("sender_user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    body: text("body"),
+    replyToMessageId: uuid("reply_to_message_id"),
+    activityId: uuid("activity_id").references(() => activities.id, {
+      onDelete: "set null",
+    }),
+    createdAt: timestamp("created_at").defaultNow().notNull(),
+  },
+  (t) => [
+    index("message_conversation_created_idx").on(t.conversationId, t.createdAt),
+  ],
+);
+
+export const messageReactions = pgTable(
+  "message_reaction",
+  {
+    messageId: uuid("message_id")
+      .notNull()
+      .references(() => messages.id, { onDelete: "cascade" }),
+    userId: text("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    emoji: text("emoji").notNull(),
+    createdAt: timestamp("created_at").defaultNow().notNull(),
+  },
+  (t) => [primaryKey({ columns: [t.messageId, t.userId, t.emoji] })],
+);
+
+export const conversationReads = pgTable(
+  "conversation_read",
+  {
+    conversationId: uuid("conversation_id")
+      .notNull()
+      .references(() => conversations.id, { onDelete: "cascade" }),
+    userId: text("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    lastReadAt: timestamp("last_read_at").defaultNow().notNull(),
+  },
+  (t) => [primaryKey({ columns: [t.conversationId, t.userId] })],
+);
+
 export type User = typeof users.$inferSelect;
 export type NewUser = typeof users.$inferInsert;
 export type Activity = typeof activities.$inferSelect;
@@ -185,4 +272,9 @@ export type NewActivity = typeof activities.$inferInsert;
 export type ActivityStream = typeof activityStreams.$inferSelect;
 export type NewActivityStream = typeof activityStreams.$inferInsert;
 export type GarminConnection = typeof garminConnections.$inferSelect;
+export type Conversation = typeof conversations.$inferSelect;
+export type Message = typeof messages.$inferSelect;
+export type NewMessage = typeof messages.$inferInsert;
+export type MessageReaction = typeof messageReactions.$inferSelect;
+export type CoachInvitation = typeof coachInvitations.$inferSelect;
 export type UserRole = (typeof userRole.enumValues)[number];

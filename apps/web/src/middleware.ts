@@ -14,7 +14,8 @@ export default auth((req) => {
     publicPaths.includes(pathname) ||
     pathname.startsWith("/api/auth") ||
     pathname.startsWith("/api/storage") ||
-    pathname.startsWith("/api/garmin/webhook");
+    pathname.startsWith("/api/garmin/webhook") ||
+    pathname.startsWith("/invite/");
 
   if (!isLoggedIn && !isPublic) {
     return NextResponse.redirect(new URL("/login", req.url));
