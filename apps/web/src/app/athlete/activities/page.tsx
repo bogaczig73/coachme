@@ -68,11 +68,18 @@ export default async function ActivitiesPage() {
             </thead>
             <tbody className="divide-y divide-border">
               {rows.map((a) => (
-                <tr key={a.id} className="hover:bg-muted/30">
+                <tr
+                  key={a.id}
+                  className="cursor-pointer hover:bg-muted/30"
+                  onClick={undefined}
+                >
                   <td className="px-4 py-3">
-                    <p className="font-medium">
+                    <Link
+                      href={`/athlete/activities/${a.id}`}
+                      className="font-medium hover:underline"
+                    >
                       {a.name ?? a.sourceFileName ?? "Activity"}
-                    </p>
+                    </Link>
                     <p className="text-xs text-muted-foreground">
                       {a.startedAt
                         ? new Date(a.startedAt).toLocaleString()

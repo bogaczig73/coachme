@@ -80,24 +80,26 @@ export default async function AthleteHome() {
         ) : (
           <ul className="mt-4 divide-y divide-border">
             {recent.map((a) => (
-              <li
-                key={a.id}
-                className="flex items-center justify-between py-3 text-sm"
-              >
-                <div>
-                  <p className="font-medium">
-                    {a.name ?? a.sport ?? "Activity"}
-                  </p>
-                  <p className="text-xs text-muted-foreground">
-                    {a.startedAt
-                      ? new Date(a.startedAt).toLocaleString()
-                      : new Date(a.createdAt).toLocaleString()}{" "}
-                    · {a.status}
-                  </p>
-                </div>
-                <span className="text-xs text-muted-foreground">
-                  {a.distanceM ? `${(a.distanceM / 1000).toFixed(1)} km` : "—"}
-                </span>
+              <li key={a.id}>
+                <Link
+                  href={`/athlete/activities/${a.id}`}
+                  className="flex items-center justify-between py-3 text-sm transition-colors hover:bg-muted/30 -mx-2 px-2 rounded"
+                >
+                  <div>
+                    <p className="font-medium">
+                      {a.name ?? a.sport ?? "Activity"}
+                    </p>
+                    <p className="text-xs text-muted-foreground">
+                      {a.startedAt
+                        ? new Date(a.startedAt).toLocaleString()
+                        : new Date(a.createdAt).toLocaleString()}{" "}
+                      · {a.status}
+                    </p>
+                  </div>
+                  <span className="text-xs text-muted-foreground">
+                    {a.distanceM ? `${(a.distanceM / 1000).toFixed(1)} km` : "—"}
+                  </span>
+                </Link>
               </li>
             ))}
           </ul>
