@@ -11,7 +11,10 @@ export default auth((req) => {
 
   const publicPaths = ["/", "/login", "/onboarding"];
   const isPublic =
-    publicPaths.includes(pathname) || pathname.startsWith("/api/auth");
+    publicPaths.includes(pathname) ||
+    pathname.startsWith("/api/auth") ||
+    pathname.startsWith("/api/storage") ||
+    pathname.startsWith("/api/garmin/webhook");
 
   if (!isLoggedIn && !isPublic) {
     return NextResponse.redirect(new URL("/login", req.url));

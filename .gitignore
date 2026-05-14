@@ -15,3 +15,6 @@ out/
 
 coverage/
 *.tsbuildinfo
+
+# Local file storage (Vercel Blob fallback for dev)
+apps/web/storage/
