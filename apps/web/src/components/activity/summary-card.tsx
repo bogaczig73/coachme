@@ -1,5 +1,7 @@
 import { fmtDuration, fmtDistance, fmtSpeed, fmtPace } from "@/lib/format";
 import type { Activity } from "@betri/db/schema";
+import { getSportTheme } from "@/lib/sport";
+import { SportIcon } from "@/components/sport-badge";
 
 const PACE_SPORTS = new Set(["running", "run", "walking", "walk", "hiking"]);
 
@@ -13,6 +15,7 @@ export function SummaryCard({ activity }: { activity: Activity }) {
   const isPaceSport = activity.sport
     ? PACE_SPORTS.has(activity.sport.toLowerCase())
     : false;
+  const theme = getSportTheme(activity.sport);
 
   const stats: Stat[] = [
     { label: "Duration", value: fmtDuration(activity.durationSec) },
@@ -60,11 +63,23 @@ export function SummaryCard({ activity }: { activity: Activity }) {
   ];
 
   return (
-    <div className="rounded-lg border border-border">
-      <div className="grid grid-cols-2 gap-px overflow-hidden rounded-lg bg-border sm:grid-cols-5">
+    <div
+      className="overflow-hidden rounded-xl border border-border bg-card"
+      style={{ borderLeft: `4px solid ${theme.color}` }}
+    >
+      <div
+        className="flex items-center gap-2 border-b border-border px-4 py-2"
+        style={{ background: theme.bg }}
+      >
+        <SportIcon sport={activity.sport} className="h-4 w-4" />
+        <span className="text-xs font-semibold uppercase tracking-wider" style={{ color: theme.tint }}>
+          {theme.label}
+        </span>
+      </div>
+      <div className="grid grid-cols-2 gap-px bg-border sm:grid-cols-5">
         {stats.map((s) => (
-          <div key={s.label} className="bg-background p-4">
-            <p className="text-xs uppercase tracking-wide text-muted-foreground">
+          <div key={s.label} className="bg-card p-4">
+            <p className="text-[10px] uppercase tracking-wider text-muted-foreground">
               {s.label}
             </p>
             <p className="mt-1 text-lg font-semibold tabular-nums">{s.value}</p>

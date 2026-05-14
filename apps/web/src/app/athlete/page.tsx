@@ -1,9 +1,12 @@
 import Link from "next/link";
+import { Upload, Watch } from "lucide-react";
 import { auth } from "@/auth";
 import { Button } from "@/components/ui/button";
 import { db } from "@betri/db/client";
 import { activities, garminConnections } from "@betri/db/schema";
 import { eq, desc } from "drizzle-orm";
+import { SportIcon } from "@/components/sport-badge";
+import { getSportTheme } from "@/lib/sport";
 
 export default async function AthleteHome() {
   const session = await auth();
@@ -35,8 +38,11 @@ export default async function AthleteHome() {
       </div>
 
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-        <div className="rounded-lg border border-border p-6">
-          <h2 className="font-semibold">Upload activity</h2>
+        <div className="gradient-surface rounded-xl border border-border p-6">
+          <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-primary/10 text-primary">
+            <Upload className="h-5 w-5" />
+          </div>
+          <h2 className="mt-3 font-semibold">Upload activity</h2>
           <p className="mt-1 text-sm text-muted-foreground">
             Drag in a .fit file from any device.
           </p>
@@ -45,8 +51,11 @@ export default async function AthleteHome() {
           </Button>
         </div>
 
-        <div className="rounded-lg border border-border p-6">
-          <h2 className="font-semibold">
+        <div className="gradient-surface rounded-xl border border-border p-6">
+          <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-secondary text-muted-foreground">
+            <Watch className="h-5 w-5" />
+          </div>
+          <h2 className="mt-3 font-semibold">
             Garmin {garmin.length > 0 ? "connected" : "not connected"}
           </h2>
           <p className="mt-1 text-sm text-muted-foreground">
@@ -62,7 +71,7 @@ export default async function AthleteHome() {
         </div>
       </div>
 
-      <div className="rounded-lg border border-border p-6">
+      <div className="rounded-xl border border-border bg-card p-6">
         <div className="flex items-center justify-between">
           <h2 className="font-semibold">Recent activities</h2>
           <Link
@@ -78,30 +87,41 @@ export default async function AthleteHome() {
             No activities yet.
           </p>
         ) : (
-          <ul className="mt-4 divide-y divide-border">
-            {recent.map((a) => (
-              <li key={a.id}>
-                <Link
-                  href={`/athlete/activities/${a.id}`}
-                  className="flex items-center justify-between py-3 text-sm transition-colors hover:bg-muted/30 -mx-2 px-2 rounded"
-                >
-                  <div>
-                    <p className="font-medium">
-                      {a.name ?? a.sport ?? "Activity"}
-                    </p>
-                    <p className="text-xs text-muted-foreground">
-                      {a.startedAt
-                        ? new Date(a.startedAt).toLocaleString()
-                        : new Date(a.createdAt).toLocaleString()}{" "}
-                      · {a.status}
-                    </p>
-                  </div>
-                  <span className="text-xs text-muted-foreground">
-                    {a.distanceM ? `${(a.distanceM / 1000).toFixed(1)} km` : "—"}
-                  </span>
-                </Link>
-              </li>
-            ))}
+          <ul className="mt-4 space-y-2">
+            {recent.map((a) => {
+              const theme = getSportTheme(a.sport);
+              return (
+                <li key={a.id}>
+                  <Link
+                    href={`/athlete/activities/${a.id}`}
+                    className="group flex items-center gap-3 rounded-lg border border-border bg-card p-3 transition-shadow hover:shadow-sm"
+                    style={{ borderLeft: `3px solid ${theme.color}` }}
+                  >
+                    <span
+                      className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg"
+                      style={{ background: theme.bg }}
+                    >
+                      <SportIcon sport={a.sport} className="h-4 w-4" />
+                    </span>
+                    <div className="min-w-0 flex-1">
+                      <p className="truncate font-medium">
+                        {a.name ?? theme.label}
+                      </p>
+                      <p className="text-xs text-muted-foreground">
+                        {a.startedAt
+                          ? new Date(a.startedAt).toLocaleString()
+                          : new Date(a.createdAt).toLocaleString()}
+                      </p>
+                    </div>
+                    <span className="shrink-0 text-xs text-muted-foreground">
+                      {a.distanceM
+                        ? `${(a.distanceM / 1000).toFixed(1)} km`
+                        : "—"}
+                    </span>
+                  </Link>
+                </li>
+              );
+            })}
           </ul>
         )}
       </div>

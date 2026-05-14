@@ -292,10 +292,10 @@ export function ChatThread({
                     </div>
                   )}
                   <div
-                    className={`rounded-2xl px-3 py-2 ${
+                    className={`rounded-2xl px-3 py-2 shadow-sm ${
                       mine
-                        ? "bg-foreground text-background"
-                        : "bg-background border border-border"
+                        ? "bg-primary text-primary-foreground"
+                        : "bg-card border border-border"
                     } ${msg.activity ? "min-w-[220px]" : ""}`}
                   >
                     {msg.activity && (
@@ -399,7 +399,7 @@ export function ChatThread({
         <button
           type="submit"
           disabled={pending || (!draft.trim() && true)}
-          className="rounded-md bg-foreground p-2 text-background disabled:opacity-40"
+          className="rounded-lg bg-primary p-2 text-primary-foreground shadow-sm transition-all hover:bg-primary/90 active:scale-95 disabled:opacity-40"
           aria-label="Send"
         >
           <Send className="h-4 w-4" />

@@ -1,12 +1,16 @@
 import Link from "next/link";
 import { auth } from "@/auth";
 import { Button } from "@/components/ui/button";
+import { ThemeToggle } from "@/components/theme-toggle";
 
 export default async function Home() {
   const session = await auth();
 
   return (
-    <main className="mx-auto flex min-h-screen max-w-3xl flex-col items-start justify-center gap-8 px-6">
+    <main className="mx-auto flex min-h-screen max-w-3xl flex-col items-start justify-center gap-8 px-6 relative">
+      <div className="absolute right-6 top-6">
+        <ThemeToggle />
+      </div>
       <div>
         <h1 className="text-4xl font-semibold tracking-tight">
           Betri CoachMe

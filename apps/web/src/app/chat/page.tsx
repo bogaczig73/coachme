@@ -144,7 +144,7 @@ export default async function ChatInboxPage() {
                       {last?.body ?? (last?.activityId ? "🏃 Shared a workout" : "—")}
                     </p>
                     {unread > 0 && (
-                      <span className="shrink-0 rounded-full bg-foreground px-2 py-0.5 text-xs font-medium text-background">
+                      <span className="shrink-0 rounded-full bg-primary px-2 py-0.5 text-xs font-medium text-primary-foreground">
                         {unread}
                       </span>
                     )}

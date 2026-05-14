@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { auth } from "@/auth";
 import { SignOutButton } from "@/components/sign-out-button";
+import { ThemeToggle } from "@/components/theme-toggle";
 
 export default async function AthleteLayout({
   children,
@@ -30,10 +31,10 @@ export default async function AthleteLayout({
               Activities
             </Link>
             <Link
-              href="/athlete/upload"
+              href="/chat"
               className="text-muted-foreground hover:text-foreground"
             >
-              Upload
+              Chat
             </Link>
             <Link
               href="/athlete/connections"
@@ -44,9 +45,10 @@ export default async function AthleteLayout({
           </nav>
         </div>
         <div className="flex items-center gap-3">
-          <span className="text-sm text-muted-foreground">
+          <span className="hidden text-sm text-muted-foreground sm:inline">
             {session?.user?.name}
           </span>
+          <ThemeToggle />
           <SignOutButton />
         </div>
       </header>

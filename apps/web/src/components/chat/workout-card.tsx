@@ -1,5 +1,7 @@
 import Link from "next/link";
 import { fmtDuration, fmtDistance } from "@/lib/format";
+import { SportIcon } from "@/components/sport-badge";
+import { getSportTheme } from "@/lib/sport";
 
 interface Props {
   activity: {
@@ -16,42 +18,45 @@ interface Props {
 }
 
 export function WorkoutCard({ activity, detailHref, compact }: Props) {
-  const started = activity.startedAt
-    ? new Date(activity.startedAt)
-    : null;
+  const theme = getSportTheme(activity.sport);
+  const started = activity.startedAt ? new Date(activity.startedAt) : null;
 
   return (
     <Link
       href={detailHref}
-      className={`block rounded-lg border border-border bg-background/60 transition-colors hover:bg-background ${
-        compact ? "px-3 py-2" : "p-3"
-      }`}
+      className="block overflow-hidden rounded-lg border border-border bg-card transition-shadow hover:shadow-sm"
+      style={{ borderLeft: `3px solid ${theme.color}` }}
     >
-      <div className="flex items-baseline justify-between gap-2">
-        <p className={`truncate font-medium ${compact ? "text-sm" : ""}`}>
-          {activity.name ?? activity.sport ?? "Workout"}
-        </p>
-        {activity.sport && (
-          <span className="shrink-0 text-xs text-muted-foreground">
-            {activity.sport}
+      <div className={compact ? "p-2.5" : "p-3"}>
+        <div className="flex items-center gap-2">
+          <span
+            className="flex h-6 w-6 shrink-0 items-center justify-center rounded-md"
+            style={{ background: theme.bg }}
+          >
+            <SportIcon sport={activity.sport} className="h-3.5 w-3.5" />
           </span>
+          <div className="min-w-0 flex-1">
+            <p className={`truncate font-semibold ${compact ? "text-sm" : ""}`}>
+              {activity.name ?? theme.label}
+            </p>
+            {started && (
+              <p className="text-xs text-muted-foreground">
+                {started.toLocaleString(undefined, {
+                  dateStyle: "medium",
+                  timeStyle: "short",
+                })}
+              </p>
+            )}
+          </div>
+        </div>
+        {!compact && (
+          <div className="mt-2 flex flex-wrap gap-x-4 gap-y-1 text-xs text-muted-foreground">
+            <span>{fmtDuration(activity.durationSec)}</span>
+            <span>{fmtDistance(activity.distanceM)}</span>
+            {activity.tss != null && <span>TSS {activity.tss}</span>}
+          </div>
         )}
       </div>
-      {started && (
-        <p className="text-xs text-muted-foreground">
-          {started.toLocaleString(undefined, {
-            dateStyle: "medium",
-            timeStyle: "short",
-          })}
-        </p>
-      )}
-      {!compact && (
-        <div className="mt-2 flex flex-wrap gap-x-4 gap-y-1 text-xs text-muted-foreground">
-          <span>{fmtDuration(activity.durationSec)}</span>
-          <span>{fmtDistance(activity.distanceM)}</span>
-          {activity.tss != null && <span>TSS {activity.tss}</span>}
-        </div>
-      )}
     </Link>
   );
 }
