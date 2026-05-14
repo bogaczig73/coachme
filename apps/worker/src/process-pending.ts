@@ -5,7 +5,7 @@ import {
   activityStreams,
   athleteProfiles,
 } from "@betri/db/schema";
-import { parseFit } from "./parse-fit";
+import { parseFit } from "./parse-fit.js";
 
 const PARSE_TIMEOUT_MS = 60_000;
 

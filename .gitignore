@@ -8,6 +8,9 @@ out/
 .env.local
 .env*.local
 
+.claude/
+.agents/
+
 .DS_Store
 *.log
 .vscode/
