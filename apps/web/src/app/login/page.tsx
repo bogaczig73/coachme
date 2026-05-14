@@ -2,10 +2,25 @@ import { signIn, auth } from "@/auth";
 import { Button } from "@/components/ui/button";
 import { redirect } from "next/navigation";
 
-export default async function LoginPage() {
+export default async function LoginPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ invite?: string }>;
+}) {
+  const sp = await searchParams;
   const session = await auth();
+
+  const inviteRedirect = sp.invite ? `/invite/${sp.invite}` : null;
+  const postAuthPath =
+    inviteRedirect ??
+    (session?.user
+      ? session.user.role
+        ? `/${session.user.role}`
+        : "/onboarding"
+      : "/onboarding");
+
   if (session?.user) {
-    redirect(session.user.role ? `/${session.user.role}` : "/onboarding");
+    redirect(postAuthPath);
   }
 
   return (
@@ -13,14 +28,16 @@ export default async function LoginPage() {
       <div className="text-center">
         <h1 className="text-2xl font-semibold">Sign in</h1>
         <p className="mt-1 text-sm text-muted-foreground">
-          Use Google to continue.
+          {inviteRedirect
+            ? "Sign in to accept your coach's invite."
+            : "Use Google to continue."}
         </p>
       </div>
 
       <form
         action={async () => {
           "use server";
-          await signIn("google", { redirectTo: "/onboarding" });
+          await signIn("google", { redirectTo: postAuthPath });
         }}
       >
         <Button type="submit" className="w-full">
