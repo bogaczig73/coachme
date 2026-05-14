@@ -1,7 +1,13 @@
-import "dotenv/config";
+import dotenv from "dotenv";
+import path from "node:path";
+import { fileURLToPath } from "node:url";
 import { migrate } from "drizzle-orm/postgres-js/migrator";
 import postgres from "postgres";
 import { drizzle } from "drizzle-orm/postgres-js";
+
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
+dotenv.config({ path: path.resolve(__dirname, "../../../.env") });
+dotenv.config({ path: path.resolve(__dirname, "../.env"), override: false });
 
 async function main() {
   const url = process.env.DATABASE_URL;
