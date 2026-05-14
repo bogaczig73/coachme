@@ -1,2 +1,2 @@
-export * from "./tss";
-export * from "./normalized-power";
+export * from "./tss.js";
+export * from "./normalized-power.js";

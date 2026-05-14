@@ -2,7 +2,14 @@
   "extends": "../../tsconfig.base.json",
   "compilerOptions": {
     "outDir": "dist",
-    "types": ["node"]
+    "rootDir": "src",
+    "types": ["node"],
+    "module": "NodeNext",
+    "moduleResolution": "NodeNext",
+    "declaration": true,
+    "declarationMap": true,
+    "noEmit": false
   },
-  "include": ["src/**/*.ts", "drizzle.config.ts"]
+  "include": ["src/index.ts", "src/client.ts", "src/schema.ts"],
+  "exclude": ["src/migrate.ts"]
 }

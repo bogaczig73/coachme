@@ -2,7 +2,7 @@ import { neon } from "@neondatabase/serverless";
 import { drizzle as drizzleNeon } from "drizzle-orm/neon-http";
 import postgres from "postgres";
 import { drizzle as drizzleNode } from "drizzle-orm/postgres-js";
-import * as schema from "./schema";
+import * as schema from "./schema.js";
 
 const url = process.env.DATABASE_URL;
 if (!url) {
