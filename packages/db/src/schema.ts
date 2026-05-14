@@ -6,6 +6,9 @@ import {
   integer,
   pgEnum,
   uuid,
+  jsonb,
+  index,
+  real,
 } from "drizzle-orm/pg-core";
 
 type AdapterAccountType = "oauth" | "oidc" | "email" | "webauthn";
@@ -101,26 +104,85 @@ export const coachAthletes = pgTable(
   (t) => [primaryKey({ columns: [t.coachUserId, t.athleteUserId] })],
 );
 
-export const activities = pgTable("activity", {
-  id: uuid("id").primaryKey().defaultRandom(),
-  userId: text("userId")
+export const activities = pgTable(
+  "activity",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    userId: text("userId")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    source: text("source").notNull(),
+    sourceFileKey: text("source_file_key"),
+    sourceFileName: text("source_file_name"),
+    sport: text("sport"),
+    name: text("name"),
+    startedAt: timestamp("started_at", { mode: "date" }),
+    durationSec: integer("duration_sec"),
+    movingTimeSec: integer("moving_time_sec"),
+    distanceM: integer("distance_m"),
+    elevationGainM: integer("elevation_gain_m"),
+    avgPowerW: integer("avg_power_w"),
+    maxPowerW: integer("max_power_w"),
+    normalizedPowerW: integer("normalized_power_w"),
+    avgHrBpm: integer("avg_hr_bpm"),
+    maxHrBpm: integer("max_hr_bpm"),
+    avgCadenceRpm: integer("avg_cadence_rpm"),
+    avgSpeedMps: real("avg_speed_mps"),
+    maxSpeedMps: real("max_speed_mps"),
+    caloriesKcal: integer("calories_kcal"),
+    tss: integer("tss"),
+    intensityFactor: real("intensity_factor"),
+    status: text("status").notNull().default("pending"),
+    errorMessage: text("error_message"),
+    createdAt: timestamp("createdAt").defaultNow().notNull(),
+    updatedAt: timestamp("updatedAt").defaultNow().notNull(),
+  },
+  (t) => [
+    index("activity_user_started_idx").on(t.userId, t.startedAt),
+    index("activity_status_idx").on(t.status),
+  ],
+);
+
+export const activityStreams = pgTable("activity_stream", {
+  activityId: uuid("activity_id")
+    .primaryKey()
+    .references(() => activities.id, { onDelete: "cascade" }),
+  timestampSec: jsonb("timestamp_sec").$type<number[]>(),
+  powerW: jsonb("power_w").$type<(number | null)[]>(),
+  hrBpm: jsonb("hr_bpm").$type<(number | null)[]>(),
+  cadenceRpm: jsonb("cadence_rpm").$type<(number | null)[]>(),
+  speedMps: jsonb("speed_mps").$type<(number | null)[]>(),
+  altitudeM: jsonb("altitude_m").$type<(number | null)[]>(),
+  distanceM: jsonb("distance_m").$type<(number | null)[]>(),
+  lat: jsonb("lat").$type<(number | null)[]>(),
+  lon: jsonb("lon").$type<(number | null)[]>(),
+  tempC: jsonb("temp_c").$type<(number | null)[]>(),
+});
+
+export const garminConnections = pgTable("garmin_connection", {
+  userId: text("user_id")
+    .primaryKey()
+    .references(() => users.id, { onDelete: "cascade" }),
+  garminUserId: text("garmin_user_id"),
+  accessToken: text("access_token").notNull(),
+  accessTokenSecret: text("access_token_secret").notNull(),
+  connectedAt: timestamp("connected_at").defaultNow().notNull(),
+});
+
+export const garminRequestTokens = pgTable("garmin_request_token", {
+  oauthToken: text("oauth_token").primaryKey(),
+  oauthTokenSecret: text("oauth_token_secret").notNull(),
+  userId: text("user_id")
     .notNull()
     .references(() => users.id, { onDelete: "cascade" }),
-  source: text("source").notNull(),
-  sourceFileKey: text("source_file_key"),
-  sport: text("sport"),
-  startedAt: timestamp("started_at", { mode: "date" }),
-  durationSec: integer("duration_sec"),
-  distanceM: integer("distance_m"),
-  avgPowerW: integer("avg_power_w"),
-  avgHrBpm: integer("avg_hr_bpm"),
-  tss: integer("tss"),
-  status: text("status").notNull().default("pending"),
-  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
 });
 
 export type User = typeof users.$inferSelect;
 export type NewUser = typeof users.$inferInsert;
 export type Activity = typeof activities.$inferSelect;
 export type NewActivity = typeof activities.$inferInsert;
+export type ActivityStream = typeof activityStreams.$inferSelect;
+export type NewActivityStream = typeof activityStreams.$inferInsert;
+export type GarminConnection = typeof garminConnections.$inferSelect;
 export type UserRole = (typeof userRole.enumValues)[number];

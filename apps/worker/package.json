@@ -13,7 +13,9 @@
     "@betri/db": "workspace:*",
     "@betri/domain": "workspace:*",
     "@betri/types": "workspace:*",
-    "dotenv": "^16.4.7"
+    "dotenv": "^16.4.7",
+    "drizzle-orm": "^0.38.3",
+    "fit-file-parser": "^3.0.0"
   },
   "devDependencies": {
     "@types/node": "^22.10.5",

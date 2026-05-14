@@ -30,8 +30,8 @@ betri-coachme/
 
 ## Phases
 
-- **Phase 0 (this)** — monorepo scaffold, OAuth sign-in, athlete/coach role selection, empty dashboards
-- **Phase 1** — Garmin OAuth, FIT upload, parse on worker, activity list
+- **Phase 0** — monorepo scaffold, OAuth sign-in, athlete/coach role selection, empty dashboards
+- **Phase 1 (this)** — Garmin OAuth, FIT upload, parse on worker, activity list
 - **Phase 2** — Workout analysis (streams chart, laps, map, NP/IF/TSS)
 - **Phase 3** — Coach ↔ Athlete relationship, per-workout chat
 - **Phase 4** — Calendar, planned workouts
@@ -65,6 +65,39 @@ Open http://localhost:3000.
 1. https://console.cloud.google.com/apis/credentials → Create OAuth client → Web app
 2. Authorized redirect URI: `http://localhost:3000/api/auth/callback/google`
 3. Copy client ID + secret into `.env`
+
+### Vercel Blob (file storage)
+
+For local dev, link the project and pull env vars:
+```bash
+npx vercel link
+npx vercel env pull .env.local
+```
+
+Or create a Blob store at https://vercel.com/dashboard/stores and copy
+`BLOB_READ_WRITE_TOKEN` into `.env`.
+
+### Garmin Connect (optional)
+
+The Garmin Activity API requires application approval — apply at
+https://developer.garmin.com. Once approved, you'll get a consumer key + secret;
+set them in `.env`. Configure these URLs in the Garmin app dashboard:
+
+- OAuth callback: `https://YOUR_DOMAIN/api/garmin/callback`
+- Activity webhook: `https://YOUR_DOMAIN/api/garmin/webhook`
+
+Until approved, the **Connect Garmin** button shows a "Pending" state and
+manual FIT upload works fully.
+
+### Running the worker locally
+
+```bash
+pnpm --filter @betri/worker dev
+```
+
+The worker polls Postgres every 5 seconds for `activity.status='pending'`,
+downloads the FIT file, parses it, writes streams + summary metrics, and
+flips status to `ready` (or `failed`).
 
 ## Deployment
 
