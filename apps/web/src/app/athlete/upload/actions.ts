@@ -2,10 +2,10 @@
 
 import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
-import { put } from "@vercel/blob";
 import { auth } from "@/auth";
 import { db } from "@betri/db/client";
 import { activities } from "@betri/db/schema";
+import { putFile } from "@/lib/storage";
 
 const MAX_BYTES = 10 * 1024 * 1024; // 10 MB
 
@@ -25,16 +25,12 @@ export async function uploadFit(formData: FormData) {
   }
 
   const key = `fit/${session.user.id}/${Date.now()}-${file.name}`;
-  const blob = await put(key, file, {
-    access: "public",
-    addRandomSuffix: false,
-    contentType: "application/octet-stream",
-  });
+  const { url } = await putFile(key, file);
 
   await db.insert(activities).values({
     userId: session.user.id,
     source: "upload",
-    sourceFileKey: blob.url,
+    sourceFileKey: url,
     sourceFileName: file.name,
     status: "pending",
   });

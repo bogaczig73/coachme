@@ -1,5 +1,12 @@
-import "dotenv/config";
-import { processOnePending } from "./process-pending";
+import dotenv from "dotenv";
+import path from "node:path";
+import { fileURLToPath } from "node:url";
+
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
+dotenv.config({ path: path.resolve(__dirname, "../../../.env") });
+dotenv.config({ path: path.resolve(__dirname, "../.env"), override: false });
+
+const { processOnePending } = await import("./process-pending");
 
 const POLL_INTERVAL_MS = 5_000;
 
