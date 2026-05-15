@@ -20,6 +20,7 @@ const NAV_BY_ROLE: Record<UserRole, NavItem[]> = {
   coach: [
     { href: "/coach", label: "Dashboard" },
     { href: "/coach/athletes", label: "Athletes" },
+    { href: "/coach/calendar", label: "Calendar" },
     { href: "/chat", label: "Chat" },
   ],
 };

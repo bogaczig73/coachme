@@ -71,6 +71,13 @@ export async function createPlannedWorkout(input: {
   targetDurationSec?: number;
   targetDistanceM?: number;
   targetTss?: number;
+  targetCaloriesKcal?: number;
+  targetElevationGainM?: number;
+  targetAvgPowerW?: number;
+  targetAvgHrBpm?: number;
+  targetIntensityFactor?: number;
+  preActivityComments?: string;
+  workoutSteps?: import("@betri/db/schema").WorkoutStep[];
 }) {
   const session = await auth();
   if (!session?.user?.id) redirect("/login");
@@ -89,6 +96,13 @@ export async function createPlannedWorkout(input: {
       targetDurationSec: input.targetDurationSec ?? null,
       targetDistanceM: input.targetDistanceM ?? null,
       targetTss: input.targetTss ?? null,
+      targetCaloriesKcal: input.targetCaloriesKcal ?? null,
+      targetElevationGainM: input.targetElevationGainM ?? null,
+      targetAvgPowerW: input.targetAvgPowerW ?? null,
+      targetAvgHrBpm: input.targetAvgHrBpm ?? null,
+      targetIntensityFactor: input.targetIntensityFactor ?? null,
+      preActivityComments: input.preActivityComments ?? null,
+      workoutSteps: input.workoutSteps ?? null,
     })
     .returning();
 
@@ -109,6 +123,13 @@ export async function updatePlannedWorkout(input: {
   targetDurationSec?: number | null;
   targetDistanceM?: number | null;
   targetTss?: number | null;
+  targetCaloriesKcal?: number | null;
+  targetElevationGainM?: number | null;
+  targetAvgPowerW?: number | null;
+  targetAvgHrBpm?: number | null;
+  targetIntensityFactor?: number | null;
+  preActivityComments?: string | null;
+  workoutSteps?: import("@betri/db/schema").WorkoutStep[] | null;
 }) {
   const session = await auth();
   if (!session?.user?.id) redirect("/login");

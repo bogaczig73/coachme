@@ -29,6 +29,13 @@
       "when": 1778827095776,
       "tag": "0003_smart_vindicator",
       "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1778829280688,
+      "tag": "0004_steep_human_fly",
+      "breakpoints": true
     }
   ]
 }

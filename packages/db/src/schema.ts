@@ -13,6 +13,18 @@ import {
 
 type AdapterAccountType = "oauth" | "oidc" | "email" | "webauthn";
 
+export type WorkoutStep = {
+  type: "warmup" | "active" | "cooldown" | "rest";
+  name: string;
+  durationMin: number;
+  powerMinW?: number;
+  powerMaxW?: number;
+  zone?: string;
+  cadenceMinRpm?: number;
+  cadenceMaxRpm?: number;
+  notes?: string;
+};
+
 export const userRole = pgEnum("user_role", ["athlete", "coach"]);
 
 export const users = pgTable("user", {
@@ -285,6 +297,13 @@ export const plannedWorkouts = pgTable(
     targetDurationSec: integer("target_duration_sec"),
     targetDistanceM: integer("target_distance_m"),
     targetTss: integer("target_tss"),
+    targetCaloriesKcal: integer("target_calories_kcal"),
+    targetElevationGainM: integer("target_elevation_gain_m"),
+    targetAvgPowerW: integer("target_avg_power_w"),
+    targetAvgHrBpm: integer("target_avg_hr_bpm"),
+    targetIntensityFactor: real("target_intensity_factor"),
+    preActivityComments: text("pre_activity_comments"),
+    workoutSteps: jsonb("workout_steps").$type<WorkoutStep[]>(),
     completedActivityId: uuid("completed_activity_id").references(
       () => activities.id,
       { onDelete: "set null" },

@@ -13,6 +13,103 @@ interface Props {
   onLinked?: (workout: PlannedWorkout | null) => void;
 }
 
+const STEP_TYPE_LABELS: Record<string, string> = {
+  warmup: "Warm Up",
+  active: "Active",
+  cooldown: "Cool Down",
+  rest: "Rest",
+};
+
+function WorkoutDetail({ workout }: { workout: PlannedWorkout }) {
+  const theme = getSportTheme(workout.sport);
+  const meta: string[] = [];
+  if (workout.targetDistanceM) meta.push(fmtDistance(workout.targetDistanceM));
+  if (workout.targetDurationSec) meta.push(fmtDuration(workout.targetDurationSec));
+  if (workout.targetTss) meta.push(`${workout.targetTss} TSS`);
+  if (workout.targetIntensityFactor) meta.push(`IF ${workout.targetIntensityFactor.toFixed(2)}`);
+  if (workout.targetAvgPowerW) meta.push(`~${workout.targetAvgPowerW} W`);
+  if (workout.targetAvgHrBpm) meta.push(`~${workout.targetAvgHrBpm} bpm`);
+  if (workout.targetCaloriesKcal) meta.push(`${workout.targetCaloriesKcal} kcal`);
+  if (workout.targetElevationGainM) meta.push(`↑${workout.targetElevationGainM} m`);
+
+  return (
+    <div className="space-y-3">
+      <div className="rounded-lg px-3 py-2.5" style={{ backgroundColor: theme.bg }}>
+        <p className="text-sm font-semibold" style={{ color: theme.color }}>
+          {workout.name}
+        </p>
+        {meta.length > 0 && (
+          <p className="mt-1 text-xs" style={{ color: theme.color, opacity: 0.75 }}>
+            {meta.join(" · ")}
+          </p>
+        )}
+      </div>
+
+      {workout.workoutSteps && workout.workoutSteps.length > 0 && (
+        <div>
+          <p className="mb-1.5 text-xs font-semibold text-muted-foreground uppercase tracking-wide">
+            Workout Structure
+          </p>
+          <ol className="space-y-1.5">
+            {workout.workoutSteps.map((step, i) => {
+              const powerParts: string[] = [];
+              if (step.powerMinW && step.powerMaxW)
+                powerParts.push(`${step.powerMinW}–${step.powerMaxW} W`);
+              else if (step.powerMinW) powerParts.push(`${step.powerMinW}+ W`);
+              if (step.cadenceMinRpm && step.cadenceMaxRpm)
+                powerParts.push(`${step.cadenceMinRpm}–${step.cadenceMaxRpm} rpm`);
+              if (step.zone) powerParts.push(step.zone);
+
+              return (
+                <li
+                  key={i}
+                  className="flex items-start gap-2 rounded-md bg-muted/40 px-3 py-2 text-sm"
+                >
+                  <span className="mt-0.5 flex h-4 w-4 shrink-0 items-center justify-center rounded-full bg-primary/10 text-[10px] font-bold text-primary">
+                    {i + 1}
+                  </span>
+                  <div>
+                    <span className="font-medium">
+                      {step.name || STEP_TYPE_LABELS[step.type] || step.type}
+                    </span>
+                    <span className="ml-1.5 text-muted-foreground">
+                      {step.durationMin} min
+                      {powerParts.length > 0 && ` @ ${powerParts.join(", ")}`}
+                    </span>
+                    {step.notes && (
+                      <p className="mt-0.5 text-xs text-muted-foreground">{step.notes}</p>
+                    )}
+                  </div>
+                </li>
+              );
+            })}
+          </ol>
+        </div>
+      )}
+
+      {workout.preActivityComments && (
+        <div>
+          <p className="mb-1 text-xs font-semibold text-muted-foreground uppercase tracking-wide">
+            Motivation
+          </p>
+          <p className="text-sm text-muted-foreground whitespace-pre-line">
+            {workout.preActivityComments}
+          </p>
+        </div>
+      )}
+
+      {workout.description && (
+        <div>
+          <p className="mb-1 text-xs font-semibold text-muted-foreground uppercase tracking-wide">
+            Coach notes
+          </p>
+          <p className="text-sm text-muted-foreground whitespace-pre-line">{workout.description}</p>
+        </div>
+      )}
+    </div>
+  );
+}
+
 export function PlannedWorkoutLinker({
   activityId,
   linkedWorkout,
@@ -50,12 +147,6 @@ export function PlannedWorkoutLinker({
   }
 
   if (linked) {
-    const theme = getSportTheme(linked.sport);
-    const meta: string[] = [];
-    if (linked.targetDistanceM) meta.push(fmtDistance(linked.targetDistanceM));
-    if (linked.targetDurationSec) meta.push(fmtDuration(linked.targetDurationSec));
-    if (linked.targetTss) meta.push(`${linked.targetTss} TSS`);
-
     return (
       <div className="rounded-xl border border-border bg-card p-5">
         <div className="flex items-center justify-between mb-3">
@@ -70,24 +161,7 @@ export function PlannedWorkoutLinker({
             Unlink
           </button>
         </div>
-        <div
-          className="rounded-lg px-3 py-2.5"
-          style={{ backgroundColor: theme.bg }}
-        >
-          <p className="text-sm font-semibold" style={{ color: theme.color }}>
-            {linked.name}
-          </p>
-          {linked.description && (
-            <p className="mt-0.5 text-xs text-muted-foreground line-clamp-2">
-              {linked.description}
-            </p>
-          )}
-          {meta.length > 0 && (
-            <p className="mt-1 text-xs" style={{ color: theme.color, opacity: 0.75 }}>
-              {meta.join(" · ")}
-            </p>
-          )}
-        </div>
+        <WorkoutDetail workout={linked} />
       </div>
     );
   }
@@ -120,6 +194,7 @@ export function PlannedWorkoutLinker({
               const meta: string[] = [];
               if (pw.targetDistanceM) meta.push(fmtDistance(pw.targetDistanceM));
               if (pw.targetDurationSec) meta.push(fmtDuration(pw.targetDurationSec));
+              if (pw.targetTss) meta.push(`${pw.targetTss} TSS`);
               return (
                 <button
                   key={pw.id}
