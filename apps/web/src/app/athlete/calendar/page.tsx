@@ -4,21 +4,36 @@ import { db } from "@betri/db/client";
 import { activities, plannedWorkouts } from "@betri/db/schema";
 import { CalendarGrid } from "@/components/calendar/calendar-grid";
 
-interface Props {
-  searchParams: Promise<{ year?: string; month?: string }>;
+/** Returns the Monday of the week containing `date`. */
+function weekMonday(date: Date): Date {
+  const d = new Date(date);
+  const dow = (d.getDay() + 6) % 7; // 0=Mon … 6=Sun
+  d.setDate(d.getDate() - dow);
+  d.setHours(0, 0, 0, 0);
+  return d;
 }
 
-export default async function AthleteCalendarPage({ searchParams }: Props) {
+function toYMD(d: Date): string {
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+}
+
+export default async function AthleteCalendarPage() {
   const session = await auth();
   const userId = session!.user.id;
 
-  const params = await searchParams;
-  const now = new Date();
-  const year = params.year ? parseInt(params.year, 10) : now.getFullYear();
-  const month = params.month ? parseInt(params.month, 10) : now.getMonth() + 1;
+  const today = new Date();
+  const todayStr = toYMD(today);
 
-  const monthStart = new Date(year, month - 1, 1);
-  const monthEnd = new Date(year, month, 0, 23, 59, 59);
+  // Rolling window: Monday 4 weeks back → Sunday 8 weeks forward
+  const windowStart = weekMonday(today);
+  windowStart.setDate(windowStart.getDate() - 4 * 7);
+
+  const windowEnd = new Date(windowStart);
+  windowEnd.setDate(windowStart.getDate() + 13 * 7 - 1); // 13 full weeks
+  windowEnd.setHours(23, 59, 59, 999);
+
+  const startDate = toYMD(windowStart);
+  const endDate = toYMD(windowEnd);
 
   const [planned, done] = await Promise.all([
     db
@@ -27,11 +42,8 @@ export default async function AthleteCalendarPage({ searchParams }: Props) {
       .where(
         and(
           eq(plannedWorkouts.athleteUserId, userId),
-          gte(plannedWorkouts.scheduledDate, `${year}-${String(month).padStart(2, "0")}-01`),
-          lte(
-            plannedWorkouts.scheduledDate,
-            `${year}-${String(month).padStart(2, "0")}-${String(new Date(year, month, 0).getDate()).padStart(2, "0")}`,
-          ),
+          gte(plannedWorkouts.scheduledDate, startDate),
+          lte(plannedWorkouts.scheduledDate, endDate),
         ),
       )
       .orderBy(plannedWorkouts.scheduledDate),
@@ -43,6 +55,10 @@ export default async function AthleteCalendarPage({ searchParams }: Props) {
         startedAt: activities.startedAt,
         durationSec: activities.durationSec,
         distanceM: activities.distanceM,
+        avgPowerW: activities.avgPowerW,
+        normalizedPowerW: activities.normalizedPowerW,
+        avgHrBpm: activities.avgHrBpm,
+        avgSpeedMps: activities.avgSpeedMps,
         tss: activities.tss,
       })
       .from(activities)
@@ -50,8 +66,8 @@ export default async function AthleteCalendarPage({ searchParams }: Props) {
         and(
           eq(activities.userId, userId),
           eq(activities.status, "ready"),
-          gte(activities.startedAt, monthStart),
-          lte(activities.startedAt, monthEnd),
+          gte(activities.startedAt, windowStart),
+          lte(activities.startedAt, windowEnd),
         ),
       )
       .orderBy(desc(activities.startedAt)),
@@ -64,7 +80,7 @@ export default async function AthleteCalendarPage({ searchParams }: Props) {
   }));
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4">
       <div>
         <h1 className="text-2xl font-semibold">Training Calendar</h1>
         <p className="text-sm text-muted-foreground">
@@ -73,14 +89,14 @@ export default async function AthleteCalendarPage({ searchParams }: Props) {
       </div>
 
       <CalendarGrid
-        year={year}
-        month={month}
+        startDate={startDate}
+        endDate={endDate}
+        todayStr={todayStr}
         plannedWorkouts={planned}
         activities={calendarActivities}
         athleteUserId={userId}
         canCreate
-        calendarBaseHref="/athlete/calendar"
-        icsHref={`/api/calendar/ics?athleteId=${userId}&year=${year}&month=${month}`}
+        icsHref={`/api/calendar/ics?athleteId=${userId}&startDate=${startDate}&endDate=${endDate}`}
       />
     </div>
   );

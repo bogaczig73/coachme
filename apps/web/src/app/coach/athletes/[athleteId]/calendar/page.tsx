@@ -6,12 +6,24 @@ import { activities, plannedWorkouts, users } from "@betri/db/schema";
 import { assertCoaches } from "@/lib/access";
 import { CalendarGrid } from "@/components/calendar/calendar-grid";
 
-interface Props {
-  params: Promise<{ athleteId: string }>;
-  searchParams: Promise<{ year?: string; month?: string }>;
+/** Returns the Monday of the week containing `date`. */
+function weekMonday(date: Date): Date {
+  const d = new Date(date);
+  const dow = (d.getDay() + 6) % 7; // 0=Mon … 6=Sun
+  d.setDate(d.getDate() - dow);
+  d.setHours(0, 0, 0, 0);
+  return d;
 }
 
-export default async function CoachAthleteCalendarPage({ params, searchParams }: Props) {
+function toYMD(d: Date): string {
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+}
+
+interface Props {
+  params: Promise<{ athleteId: string }>;
+}
+
+export default async function CoachAthleteCalendarPage({ params }: Props) {
   const { athleteId } = await params;
   const session = await auth();
   if (!session?.user?.id) redirect("/login");
@@ -29,15 +41,19 @@ export default async function CoachAthleteCalendarPage({ params, searchParams }:
     .limit(1);
   if (!athleteRow) notFound();
 
-  const sp = await searchParams;
-  const now = new Date();
-  const year = sp.year ? parseInt(sp.year, 10) : now.getFullYear();
-  const month = sp.month ? parseInt(sp.month, 10) : now.getMonth() + 1;
+  const today = new Date();
+  const todayStr = toYMD(today);
 
-  const monthStart = new Date(year, month - 1, 1);
-  const monthEnd = new Date(year, month, 0, 23, 59, 59);
-  const lastDayStr = String(new Date(year, month, 0).getDate()).padStart(2, "0");
-  const monthStr = String(month).padStart(2, "0");
+  // Rolling window: Monday 4 weeks back → Sunday 8 weeks forward
+  const windowStart = weekMonday(today);
+  windowStart.setDate(windowStart.getDate() - 4 * 7);
+
+  const windowEnd = new Date(windowStart);
+  windowEnd.setDate(windowStart.getDate() + 13 * 7 - 1);
+  windowEnd.setHours(23, 59, 59, 999);
+
+  const startDate = toYMD(windowStart);
+  const endDate = toYMD(windowEnd);
 
   const [planned, done] = await Promise.all([
     db
@@ -46,8 +62,8 @@ export default async function CoachAthleteCalendarPage({ params, searchParams }:
       .where(
         and(
           eq(plannedWorkouts.athleteUserId, athleteId),
-          gte(plannedWorkouts.scheduledDate, `${year}-${monthStr}-01`),
-          lte(plannedWorkouts.scheduledDate, `${year}-${monthStr}-${lastDayStr}`),
+          gte(plannedWorkouts.scheduledDate, startDate),
+          lte(plannedWorkouts.scheduledDate, endDate),
         ),
       )
       .orderBy(plannedWorkouts.scheduledDate),
@@ -59,6 +75,10 @@ export default async function CoachAthleteCalendarPage({ params, searchParams }:
         startedAt: activities.startedAt,
         durationSec: activities.durationSec,
         distanceM: activities.distanceM,
+        avgPowerW: activities.avgPowerW,
+        normalizedPowerW: activities.normalizedPowerW,
+        avgHrBpm: activities.avgHrBpm,
+        avgSpeedMps: activities.avgSpeedMps,
         tss: activities.tss,
       })
       .from(activities)
@@ -66,8 +86,8 @@ export default async function CoachAthleteCalendarPage({ params, searchParams }:
         and(
           eq(activities.userId, athleteId),
           eq(activities.status, "ready"),
-          gte(activities.startedAt, monthStart),
-          lte(activities.startedAt, monthEnd),
+          gte(activities.startedAt, windowStart),
+          lte(activities.startedAt, windowEnd),
         ),
       )
       .orderBy(desc(activities.startedAt)),
@@ -82,7 +102,7 @@ export default async function CoachAthleteCalendarPage({ params, searchParams }:
   const athleteName = athleteRow.name ?? athleteRow.email ?? "Athlete";
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4">
       <div>
         <h1 className="text-2xl font-semibold">{athleteName} — Training Calendar</h1>
         <p className="text-sm text-muted-foreground">
@@ -91,14 +111,14 @@ export default async function CoachAthleteCalendarPage({ params, searchParams }:
       </div>
 
       <CalendarGrid
-        year={year}
-        month={month}
+        startDate={startDate}
+        endDate={endDate}
+        todayStr={todayStr}
         plannedWorkouts={planned}
         activities={calendarActivities}
         athleteUserId={athleteId}
         canCreate
-        calendarBaseHref={`/coach/athletes/${athleteId}/calendar`}
-        icsHref={`/api/calendar/ics?athleteId=${athleteId}&year=${year}&month=${month}`}
+        icsHref={`/api/calendar/ics?athleteId=${athleteId}&startDate=${startDate}&endDate=${endDate}`}
       />
     </div>
   );

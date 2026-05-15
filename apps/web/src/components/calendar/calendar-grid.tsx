@@ -1,75 +1,144 @@
 "use client";
 
-import { useState } from "react";
-import { ChevronLeft, ChevronRight, Download } from "lucide-react";
-import { useRouter } from "next/navigation";
-import { getSportTheme } from "@/lib/sport";
-import { fmtDuration, fmtDistance } from "@/lib/format";
+import { useEffect, useRef, useState } from "react";
+import {
+  Waves,
+  Bike,
+  Footprints,
+  Dumbbell,
+  Zap,
+  Activity as ActivityIcon,
+  Download,
+  Check,
+} from "lucide-react";
+import { getSportTheme, type SportKey } from "@/lib/sport";
+import { fmtDuration, fmtDistance, fmtPace } from "@/lib/format";
 import { WorkoutFormModal } from "./workout-form-modal";
 import type { PlannedWorkout } from "@betri/db/schema";
 
-interface CalendarActivity {
+export interface CalendarActivity {
   id: string;
   name: string | null;
   sport: string | null;
-  startedAt: string | null; // ISO string
+  startedAt: string | null;
   durationSec: number | null;
   distanceM: number | null;
+  avgPowerW: number | null;
+  normalizedPowerW: number | null;
+  avgHrBpm: number | null;
+  avgSpeedMps: number | null;
   tss: number | null;
   detailHref: string;
 }
 
 interface Props {
-  year: number;
-  month: number; // 1-based
+  /** YYYY-MM-DD — Monday of the first week to render */
+  startDate: string;
+  /** YYYY-MM-DD — Sunday of the last week to render */
+  endDate: string;
+  /** YYYY-MM-DD — passed from server so client doesn't have to re-derive */
+  todayStr: string;
   plannedWorkouts: PlannedWorkout[];
   activities: CalendarActivity[];
   athleteUserId: string;
   canCreate: boolean;
-  calendarBaseHref: string; // e.g. "/athlete/calendar" or "/coach/athletes/x/calendar"
-  icsHref: string; // e.g. "/api/calendar/ics?athleteId=x"
+  icsHref: string;
 }
 
 const WEEKDAYS = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
 const MONTH_NAMES = [
-  "January", "February", "March", "April", "May", "June",
-  "July", "August", "September", "October", "November", "December",
+  "Jan", "Feb", "Mar", "Apr", "May", "Jun",
+  "Jul", "Aug", "Sep", "Oct", "Nov", "Dec",
 ];
+
+const SPORT_ICONS: Record<SportKey, React.ComponentType<{ className?: string; style?: React.CSSProperties }>> = {
+  swim: Waves,
+  bike: Bike,
+  run: Footprints,
+  strength: Dumbbell,
+  brick: Zap,
+  other: ActivityIcon,
+};
+
+// Sports that show pace instead of power
+const RUNNING_SPORTS = new Set([
+  "run", "running", "treadmill_running", "trail_running", "walking", "walk", "hiking",
+]);
+// Sports that show power
+const CYCLING_SPORTS = new Set([
+  "bike", "cycling", "biking", "road_biking", "mountain_biking",
+  "indoor_cycling", "gravel_cycling", "virtual_ride",
+]);
 
 function toYMD(date: Date): string {
   return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`;
 }
 
+function parseYMD(s: string): Date {
+  const [y, m, d] = s.split("-").map(Number);
+  return new Date(y, m - 1, d);
+}
+
+function buildWeeks(startDate: string, endDate: string): Date[][] {
+  const start = parseYMD(startDate);
+  const end = parseYMD(endDate);
+  const weeks: Date[][] = [];
+  const cur = new Date(start);
+  while (cur <= end) {
+    const week: Date[] = [];
+    for (let d = 0; d < 7; d++) {
+      week.push(new Date(cur));
+      cur.setDate(cur.getDate() + 1);
+    }
+    weeks.push(week);
+  }
+  return weeks;
+}
+
+function primaryMetrics(act: CalendarActivity): string[] {
+  const parts: string[] = [];
+  if (act.distanceM) parts.push(fmtDistance(act.distanceM));
+  if (act.durationSec) parts.push(fmtDuration(act.durationSec));
+  return parts;
+}
+
+function secondaryMetrics(act: CalendarActivity): string[] {
+  const sport = act.sport?.toLowerCase() ?? "";
+  const parts: string[] = [];
+  if (CYCLING_SPORTS.has(sport)) {
+    const pwr = act.normalizedPowerW ?? act.avgPowerW;
+    if (pwr) parts.push(`${pwr} W`);
+  } else if (RUNNING_SPORTS.has(sport)) {
+    if (act.avgSpeedMps) parts.push(fmtPace(act.avgSpeedMps));
+  }
+  if (act.avgHrBpm) parts.push(`${act.avgHrBpm} bpm`);
+  if (act.tss) parts.push(`${act.tss} TSS`);
+  return parts;
+}
+
 export function CalendarGrid({
-  year,
-  month,
+  startDate,
+  endDate,
+  todayStr,
   plannedWorkouts,
   activities,
   athleteUserId,
   canCreate,
-  calendarBaseHref,
   icsHref,
 }: Props) {
-  const router = useRouter();
   const [modal, setModal] = useState<
     | { type: "create"; date: string }
     | { type: "edit"; workout: PlannedWorkout }
     | null
   >(null);
+  const todayRowRef = useRef<HTMLDivElement>(null);
 
-  // Build day grid: 1st day of month, padded to Monday
-  const firstDay = new Date(year, month - 1, 1);
-  const lastDay = new Date(year, month, 0);
-  const startPad = (firstDay.getDay() + 6) % 7; // 0=Mon … 6=Sun
+  useEffect(() => {
+    todayRowRef.current?.scrollIntoView({ behavior: "smooth", block: "center" });
+  }, []);
 
-  const days: (number | null)[] = [
-    ...Array<null>(startPad).fill(null),
-    ...Array.from({ length: lastDay.getDate() }, (_, i) => i + 1),
-  ];
-  // Pad to full weeks
-  while (days.length % 7 !== 0) days.push(null);
+  const weeks = buildWeeks(startDate, endDate);
 
-  // Index data by date string
   const plannedByDate = new Map<string, PlannedWorkout[]>();
   for (const pw of plannedWorkouts) {
     const list = plannedByDate.get(pw.scheduledDate) ?? [];
@@ -86,38 +155,10 @@ export function CalendarGrid({
     activitiesByDate.set(d, list);
   }
 
-  const todayYMD = toYMD(new Date());
-
-  function prevMonth() {
-    const d = new Date(year, month - 2, 1);
-    router.push(`${calendarBaseHref}?year=${d.getFullYear()}&month=${d.getMonth() + 1}`);
-  }
-  function nextMonth() {
-    const d = new Date(year, month, 1);
-    router.push(`${calendarBaseHref}?year=${d.getFullYear()}&month=${d.getMonth() + 1}`);
-  }
-
   return (
-    <div className="flex flex-col gap-4">
-      {/* Header */}
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-2">
-          <button
-            onClick={prevMonth}
-            className="rounded-md border border-border p-1.5 text-muted-foreground hover:bg-muted"
-          >
-            <ChevronLeft className="h-4 w-4" />
-          </button>
-          <h2 className="min-w-[160px] text-center text-lg font-semibold">
-            {MONTH_NAMES[month - 1]} {year}
-          </h2>
-          <button
-            onClick={nextMonth}
-            className="rounded-md border border-border p-1.5 text-muted-foreground hover:bg-muted"
-          >
-            <ChevronRight className="h-4 w-4" />
-          </button>
-        </div>
+    <div className="flex flex-col gap-3">
+      {/* ICS export */}
+      <div className="flex justify-end">
         <a
           href={icsHref}
           className="flex items-center gap-1.5 rounded-md border border-border px-3 py-1.5 text-sm text-muted-foreground hover:bg-muted"
@@ -128,116 +169,168 @@ export function CalendarGrid({
         </a>
       </div>
 
-      {/* Weekday headers */}
-      <div className="grid grid-cols-7 gap-px rounded-t-lg border border-border bg-border">
-        {WEEKDAYS.map((d) => (
-          <div
-            key={d}
-            className="bg-muted/60 px-2 py-1.5 text-center text-xs font-medium text-muted-foreground"
-          >
-            {d}
-          </div>
-        ))}
-      </div>
+      {/* Calendar */}
+      <div className="rounded-lg border border-border overflow-hidden">
+        {/* Sticky weekday header */}
+        <div className="sticky top-0 z-10 grid grid-cols-7 border-b border-border bg-muted/90 backdrop-blur-sm">
+          {WEEKDAYS.map((day) => (
+            <div
+              key={day}
+              className="px-2 py-2.5 text-center text-xs font-semibold uppercase tracking-wider text-muted-foreground"
+            >
+              {day}
+            </div>
+          ))}
+        </div>
 
-      {/* Day grid */}
-      <div className="grid grid-cols-7 gap-px rounded-b-lg border border-border bg-border">
-        {days.map((day, i) => {
-          if (day === null) {
-            return <div key={`empty-${i}`} className="min-h-[100px] bg-muted/20" />;
-          }
-
-          const dateStr = `${year}-${String(month).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
-          const isToday = dateStr === todayYMD;
-          const planned = plannedByDate.get(dateStr) ?? [];
-          const done = activitiesByDate.get(dateStr) ?? [];
-
+        {/* Week rows */}
+        {weeks.map((week, wi) => {
+          const containsToday = week.some((d) => toYMD(d) === todayStr);
           return (
             <div
-              key={dateStr}
-              className="group min-h-[100px] bg-background p-1.5 transition-colors hover:bg-muted/30"
-              onClick={() => canCreate && setModal({ type: "create", date: dateStr })}
-              style={{ cursor: canCreate ? "pointer" : "default" }}
+              key={wi}
+              ref={containsToday ? todayRowRef : undefined}
+              className="grid grid-cols-7 border-b border-border last:border-b-0"
             >
-              {/* Day number */}
-              <div
-                className={`mb-1 flex h-6 w-6 items-center justify-center rounded-full text-xs font-medium ${
-                  isToday
-                    ? "bg-primary text-primary-foreground"
-                    : "text-muted-foreground"
-                }`}
-              >
-                {day}
-              </div>
+              {week.map((date) => {
+                const dateStr = toYMD(date);
+                const isToday = dateStr === todayStr;
+                const isPast = dateStr < todayStr;
+                const planned = plannedByDate.get(dateStr) ?? [];
+                const done = activitiesByDate.get(dateStr) ?? [];
+                const isFirstOfMonth = date.getDate() === 1;
 
-              {/* Planned workouts */}
-              {planned.map((pw) => {
-                const theme = getSportTheme(pw.sport);
                 return (
-                  <button
-                    key={pw.id}
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      setModal({ type: "edit", workout: pw });
-                    }}
-                    className="mb-0.5 flex w-full items-center gap-1 rounded px-1 py-0.5 text-left text-xs hover:opacity-80"
-                    style={{ backgroundColor: theme.bg, color: theme.color }}
-                    title={pw.name}
+                  <div
+                    key={dateStr}
+                    className={`group min-h-[140px] border-r border-border last:border-r-0 p-2 transition-colors ${
+                      isToday
+                        ? "bg-primary/5"
+                        : isPast
+                        ? "bg-muted/10"
+                        : "bg-background"
+                    } ${canCreate ? "hover:bg-muted/20 cursor-pointer" : ""}`}
+                    onClick={() => canCreate && setModal({ type: "create", date: dateStr })}
                   >
-                    <span className="truncate font-medium">{pw.name}</span>
-                    {pw.targetDurationSec && (
-                      <span className="ml-auto shrink-0 opacity-70">
-                        {fmtDuration(pw.targetDurationSec)}
+                    {/* Day number row */}
+                    <div className="mb-2 flex items-center gap-1">
+                      {isFirstOfMonth && (
+                        <span className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
+                          {MONTH_NAMES[date.getMonth()]}
+                        </span>
+                      )}
+                      <span
+                        className={`flex h-6 w-6 items-center justify-center rounded-full text-xs font-semibold ${
+                          isToday
+                            ? "bg-primary text-primary-foreground"
+                            : "text-foreground"
+                        }`}
+                      >
+                        {date.getDate()}
                       </span>
+                    </div>
+
+                    {/* Planned workouts */}
+                    {planned.map((pw) => {
+                      const theme = getSportTheme(pw.sport);
+                      const Icon = SPORT_ICONS[theme.key];
+                      return (
+                        <button
+                          key={pw.id}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setModal({ type: "edit", workout: pw });
+                          }}
+                          className="mb-1.5 w-full rounded-md px-2 py-1.5 text-left transition-opacity hover:opacity-85"
+                          style={{ backgroundColor: theme.bg }}
+                        >
+                          <div className="flex items-center gap-1 mb-0.5">
+                            <Icon className="h-3 w-3 shrink-0" style={{ color: theme.color }} />
+                            <span
+                              className="truncate text-xs font-semibold leading-tight"
+                              style={{ color: theme.color }}
+                            >
+                              {pw.name}
+                            </span>
+                          </div>
+                          {pw.description && (
+                            <p className="mb-0.5 line-clamp-2 text-[10px] leading-snug text-muted-foreground">
+                              {pw.description}
+                            </p>
+                          )}
+                          <div
+                            className="flex flex-wrap gap-x-1.5 gap-y-0.5 text-[10px]"
+                            style={{ color: theme.color, opacity: 0.75 }}
+                          >
+                            {pw.targetDistanceM != null && (
+                              <span>{fmtDistance(pw.targetDistanceM)}</span>
+                            )}
+                            {pw.targetDurationSec != null && (
+                              <span>{fmtDuration(pw.targetDurationSec)}</span>
+                            )}
+                            {pw.targetTss != null && <span>{pw.targetTss} TSS</span>}
+                          </div>
+                        </button>
+                      );
+                    })}
+
+                    {/* Completed activities */}
+                    {done.map((act) => {
+                      const theme = getSportTheme(act.sport);
+                      const Icon = SPORT_ICONS[theme.key];
+                      const primary = primaryMetrics(act);
+                      const secondary = secondaryMetrics(act);
+                      return (
+                        <a
+                          key={act.id}
+                          href={act.detailHref}
+                          onClick={(e) => e.stopPropagation()}
+                          className="mb-1.5 block w-full rounded-md border px-2 py-1.5 transition-opacity hover:opacity-85"
+                          style={{
+                            borderColor: theme.color + "50",
+                            backgroundColor: theme.bg + "80",
+                          }}
+                        >
+                          <div className="flex items-center gap-1 mb-0.5">
+                            <Check className="h-3 w-3 shrink-0 text-green-500" />
+                            <Icon className="h-3 w-3 shrink-0" style={{ color: theme.color }} />
+                            <span
+                              className="truncate text-xs font-semibold leading-tight"
+                              style={{ color: theme.color }}
+                            >
+                              {act.name ?? theme.label}
+                            </span>
+                          </div>
+                          {primary.length > 0 && (
+                            <div className="flex flex-wrap gap-x-1.5 gap-y-0.5 text-[10px] text-muted-foreground">
+                              {primary.map((p, i) => (
+                                <span key={i}>{p}</span>
+                              ))}
+                            </div>
+                          )}
+                          {secondary.length > 0 && (
+                            <div className="flex flex-wrap gap-x-1.5 gap-y-0.5 text-[10px] text-muted-foreground/80">
+                              {secondary.map((s, i) => (
+                                <span key={i}>{s}</span>
+                              ))}
+                            </div>
+                          )}
+                        </a>
+                      );
+                    })}
+
+                    {/* Add hint */}
+                    {canCreate && planned.length === 0 && done.length === 0 && (
+                      <div className="mt-1 hidden text-center text-xs text-muted-foreground/30 group-hover:block">
+                        + add
+                      </div>
                     )}
-                  </button>
+                  </div>
                 );
               })}
-
-              {/* Completed activities */}
-              {done.map((act) => {
-                const theme = getSportTheme(act.sport);
-                return (
-                  <a
-                    key={act.id}
-                    href={act.detailHref}
-                    onClick={(e) => e.stopPropagation()}
-                    className="mb-0.5 flex w-full items-center gap-1 rounded border px-1 py-0.5 text-xs hover:opacity-80"
-                    style={{ borderColor: theme.color, color: theme.color }}
-                    title={act.name ?? undefined}
-                  >
-                    <span className="truncate">
-                      ✓ {act.name ?? theme.label}
-                    </span>
-                    {act.tss != null && (
-                      <span className="ml-auto shrink-0 opacity-70">{act.tss} TSS</span>
-                    )}
-                  </a>
-                );
-              })}
-
-              {/* "Add" hint on hover (only when canCreate and cell is empty) */}
-              {canCreate && planned.length === 0 && done.length === 0 && (
-                <div className="mt-1 hidden text-center text-xs text-muted-foreground/40 group-hover:block">
-                  + add
-                </div>
-              )}
             </div>
           );
         })}
-      </div>
-
-      {/* Legend */}
-      <div className="flex items-center gap-4 text-xs text-muted-foreground">
-        <span className="flex items-center gap-1">
-          <span className="inline-block h-2.5 w-2.5 rounded-sm bg-primary/20 ring-1 ring-primary/40" />
-          Planned
-        </span>
-        <span className="flex items-center gap-1">
-          <span className="inline-block h-2.5 w-2.5 rounded-sm border border-current opacity-60" />
-          Completed
-        </span>
-        {canCreate && <span>Click any day to plan a workout</span>}
       </div>
 
       {/* Modals */}

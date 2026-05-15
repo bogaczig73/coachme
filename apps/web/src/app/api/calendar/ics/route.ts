@@ -29,11 +29,27 @@ export async function GET(req: NextRequest) {
 
   const { searchParams } = req.nextUrl;
   const athleteId = searchParams.get("athleteId");
-  const year = parseInt(searchParams.get("year") ?? "0", 10);
-  const month = parseInt(searchParams.get("month") ?? "0", 10);
 
-  if (!athleteId || !year || !month) {
+  if (!athleteId) {
     return new NextResponse("Bad request", { status: 400 });
+  }
+
+  // Accept either startDate/endDate (new rolling-window format) or legacy year/month
+  let rangeStart: string;
+  let rangeEnd: string;
+  const startDate = searchParams.get("startDate");
+  const endDate = searchParams.get("endDate");
+  if (startDate && endDate) {
+    rangeStart = startDate;
+    rangeEnd = endDate;
+  } else {
+    const year = parseInt(searchParams.get("year") ?? "0", 10);
+    const month = parseInt(searchParams.get("month") ?? "0", 10);
+    if (!year || !month) return new NextResponse("Bad request", { status: 400 });
+    const monthStr = String(month).padStart(2, "0");
+    const lastDay = new Date(year, month, 0).getDate();
+    rangeStart = `${year}-${monthStr}-01`;
+    rangeEnd = `${year}-${monthStr}-${String(lastDay).padStart(2, "0")}`;
   }
 
   // Auth check: must be the athlete or their active coach
@@ -53,17 +69,14 @@ export async function GET(req: NextRequest) {
     if (!coachRow) return new NextResponse("Forbidden", { status: 403 });
   }
 
-  const monthStr = String(month).padStart(2, "0");
-  const lastDay = new Date(year, month, 0).getDate();
-
   const rows = await db
     .select()
     .from(plannedWorkouts)
     .where(
       and(
         eq(plannedWorkouts.athleteUserId, athleteId),
-        gte(plannedWorkouts.scheduledDate, `${year}-${monthStr}-01`),
-        lte(plannedWorkouts.scheduledDate, `${year}-${monthStr}-${String(lastDay).padStart(2, "0")}`),
+        gte(plannedWorkouts.scheduledDate, rangeStart),
+        lte(plannedWorkouts.scheduledDate, rangeEnd),
       ),
     );
 
@@ -108,7 +121,7 @@ export async function GET(req: NextRequest) {
   return new NextResponse(cal, {
     headers: {
       "Content-Type": "text/calendar; charset=utf-8",
-      "Content-Disposition": `attachment; filename="training-${year}-${monthStr}.ics"`,
+      "Content-Disposition": `attachment; filename="training-${rangeStart}-${rangeEnd}.ics"`,
     },
   });
 }
