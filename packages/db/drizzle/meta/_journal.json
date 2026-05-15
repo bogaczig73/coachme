@@ -22,6 +22,13 @@
       "when": 1778792765840,
       "tag": "0002_soft_warbound",
       "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "7",
+      "when": 1778827095776,
+      "tag": "0003_smart_vindicator",
+      "breakpoints": true
     }
   ]
 }

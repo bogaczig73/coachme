@@ -3,11 +3,17 @@ import Link from "next/link";
 import { eq, and } from "drizzle-orm";
 import { auth } from "@/auth";
 import { db } from "@betri/db/client";
-import { activities, activityStreams } from "@betri/db/schema";
+import { activities, activityStreams, plannedWorkouts } from "@betri/db/schema";
 import { SummaryCard } from "@/components/activity/summary-card";
 import { StreamChart } from "@/components/activity/stream-chart";
 import { RouteMap } from "@/components/activity/route-map-loader";
 import { NameEditor } from "@/components/activity/name-editor";
+import { WorkoutFeedback } from "@/components/activity/workout-feedback";
+import { PlannedWorkoutLinker } from "@/components/activity/planned-workout-linker";
+
+function toYMD(d: Date): string {
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+}
 
 export default async function ActivityDetailPage({
   params,
@@ -31,6 +37,28 @@ export default async function ActivityDetailPage({
     .from(activityStreams)
     .where(eq(activityStreams.activityId, id))
     .limit(1);
+
+  const activityDate = activity.startedAt ? toYMD(activity.startedAt) : null;
+
+  // Planned workouts for this athlete on the same day (for linking)
+  const sameDayWorkouts = activityDate
+    ? await db
+        .select()
+        .from(plannedWorkouts)
+        .where(
+          and(
+            eq(plannedWorkouts.athleteUserId, session.user.id),
+            eq(plannedWorkouts.scheduledDate, activityDate),
+          ),
+        )
+    : [];
+
+  // Which planned workout (if any) is already linked to this activity
+  const linkedWorkout = sameDayWorkouts.find((pw) => pw.completedActivityId === id) ?? null;
+  // Candidates = same-day workouts not yet linked to any other activity
+  const candidates = sameDayWorkouts.filter(
+    (pw) => pw.completedActivityId === null || pw.completedActivityId === id,
+  );
 
   const sport = activity.sport ?? "Activity";
   const startedAt = activity.startedAt
@@ -80,6 +108,21 @@ export default async function ActivityDetailPage({
 
       <SummaryCard activity={activity} />
 
+      <WorkoutFeedback
+        activityId={activity.id}
+        initialRpe={activity.rpe}
+        initialFeeling={activity.feeling}
+        initialNotes={activity.athleteNotes}
+      />
+
+      {candidates.length > 0 && (
+        <PlannedWorkoutLinker
+          activityId={activity.id}
+          linkedWorkout={linkedWorkout}
+          candidates={candidates}
+        />
+      )}
+
       {streams && streams.timestampSec && streams.timestampSec.length > 0 ? (
         <>
           <StreamChart
@@ -103,13 +146,6 @@ export default async function ActivityDetailPage({
           Waiting for the worker to parse this activity…
         </div>
       )}
-
-      <div className="rounded-lg border border-border p-6">
-        <h2 className="font-semibold">Coach comments</h2>
-        <p className="mt-1 text-sm text-muted-foreground">
-          Per-workout chat with your coach lands here in Phase 3.
-        </p>
-      </div>
     </div>
   );
 }

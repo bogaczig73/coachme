@@ -60,6 +60,8 @@ export default async function AthleteCalendarPage() {
         avgHrBpm: activities.avgHrBpm,
         avgSpeedMps: activities.avgSpeedMps,
         tss: activities.tss,
+        rpe: activities.rpe,
+        feeling: activities.feeling,
       })
       .from(activities)
       .where(

@@ -80,6 +80,8 @@ export default async function CoachAthleteCalendarPage({ params }: Props) {
         avgHrBpm: activities.avgHrBpm,
         avgSpeedMps: activities.avgSpeedMps,
         tss: activities.tss,
+        rpe: activities.rpe,
+        feeling: activities.feeling,
       })
       .from(activities)
       .where(

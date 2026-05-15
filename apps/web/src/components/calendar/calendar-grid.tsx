@@ -10,6 +10,7 @@ import {
   Activity as ActivityIcon,
   Download,
   Check,
+  Link2,
 } from "lucide-react";
 import { getSportTheme, type SportKey } from "@/lib/sport";
 import { fmtDuration, fmtDistance, fmtPace } from "@/lib/format";
@@ -28,6 +29,8 @@ export interface CalendarActivity {
   avgHrBpm: number | null;
   avgSpeedMps: number | null;
   tss: number | null;
+  rpe: number | null;
+  feeling: number | null;
   detailHref: string;
 }
 
@@ -59,6 +62,14 @@ const SPORT_ICONS: Record<SportKey, React.ComponentType<{ className?: string; st
   brick: Zap,
   other: ActivityIcon,
 };
+
+function rpeColor(rpe: number): string {
+  if (rpe <= 3) return "#22c55e";
+  if (rpe <= 5) return "#84cc16";
+  if (rpe <= 7) return "#eab308";
+  if (rpe <= 8) return "#f97316";
+  return "#ef4444";
+}
 
 // Sports that show pace instead of power
 const RUNNING_SPORTS = new Set([
@@ -247,11 +258,14 @@ export function CalendarGrid({
                           <div className="flex items-center gap-1 mb-0.5">
                             <Icon className="h-3 w-3 shrink-0" style={{ color: theme.color }} />
                             <span
-                              className="truncate text-xs font-semibold leading-tight"
+                              className="truncate text-xs font-semibold leading-tight flex-1"
                               style={{ color: theme.color }}
                             >
                               {pw.name}
                             </span>
+                            {pw.completedActivityId && (
+                              <Link2 className="h-3 w-3 shrink-0 text-green-500" />
+                            )}
                           </div>
                           {pw.description && (
                             <p className="mb-0.5 line-clamp-2 text-[10px] leading-snug text-muted-foreground">
@@ -295,11 +309,19 @@ export function CalendarGrid({
                             <Check className="h-3 w-3 shrink-0 text-green-500" />
                             <Icon className="h-3 w-3 shrink-0" style={{ color: theme.color }} />
                             <span
-                              className="truncate text-xs font-semibold leading-tight"
+                              className="truncate text-xs font-semibold leading-tight flex-1"
                               style={{ color: theme.color }}
                             >
                               {act.name ?? theme.label}
                             </span>
+                            {act.rpe != null && (
+                              <span
+                                className="shrink-0 rounded px-1 text-[9px] font-bold text-white leading-4"
+                                style={{ backgroundColor: rpeColor(act.rpe) }}
+                              >
+                                {act.rpe}
+                              </span>
+                            )}
                           </div>
                           {primary.length > 0 && (
                             <div className="flex flex-wrap gap-x-1.5 gap-y-0.5 text-[10px] text-muted-foreground">
